@@ -24,6 +24,8 @@ ADDON_PATH = os.path.join(os.path.dirname(__file__), "..")
 ADDON_ID = ADDON.getAddonInfo('id')
 ADDON_DATA_PATH = xbmc.translatePath("special://profile/addon_data/%s" % ADDON_ID)
 
+MONITOR = xbmc.Monitor()
+
 
 def get_autocomplete_items(search_str, limit=10, provider=None):
     """
@@ -162,8 +164,7 @@ def get_JSON_response(url="", cache_days=7.0, folder=False, headers=False):
             results = json.loads(response)
             log("download %s. time: %f" % (url, time.time() - now))
             save_to_file(results, hashed_url, cache_path)
-        except Exception as error:
-            log(error)
+        except Exception:
             log("Exception: Could not get new JSON data from %s. Tryin to fallback to cache" % url)
             log(response)
             if xbmcvfs.exists(path):
@@ -182,8 +183,8 @@ def get_http(url=None, headers=False):
     """
     succeed = 0
     if not headers:
-        headers = {'User-agent': 'XBMC/16.0 ( phil65@kodi.tv )'}
-    while (succeed < 2) and (not xbmc.abortRequested):
+        headers = HEADERS
+    while succeed < 2 and not MONITOR.abortRequested():
         try:
             r = requests.get(url, headers=headers)
             if r.status_code != 200:
@@ -225,10 +226,12 @@ def save_to_file(content, filename, path=""):
     """
     if not xbmcvfs.exists(path):
         xbmcvfs.mkdirs(path)
+
     text_file_path = os.path.join(path, filename + ".txt")
     now = time.time()
-    text_file = xbmcvfs.File(text_file_path, "w")
-    json.dump(content, text_file)
-    text_file.close()
+
+    with open(text_file_path, 'w') as f:
+        json.dump(content, f)
+
     log("saved textfile %s. Time: %f" % (text_file_path, time.time() - now))
     return True
